@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>毛概复习系统</title>
+    <title>马克思主义理论复习系统</title>
     <style>
         /* --- 样式部分 --- */
         :root { --primary: #007bff; --success: #28a745; --danger: #dc3545; --bg: #f8f9fa; }
@@ -46,12 +46,49 @@
         
         /* 统计栏 */
         .stats { margin-top: auto; padding-top: 15px; border-top: 1px solid #eee; font-size: 14px; color: #666; }
+    /* --- 新增：登录界面样式 --- */
+        #login-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #f0f2f5; z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .login-box {
+            background: white; padding: 40px; border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 320px; text-align: center;
+        }
+        .login-title { font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #333; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        .input-group label { display: block; margin-bottom: 5px; color: #666; font-size: 14px; }
+        .login-input {
+            width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;
+            box-sizing: border-box; font-size: 16px;
+        }
+        .login-btn {
+            width: 100%; padding: 12px; background: var(--primary); color: white;
+            border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-top: 10px;
+        }
+        .login-btn:hover { background: #0056b3; }
+        .login-error { color: var(--danger); font-size: 14px; margin-top: 10px; display: none; }
     </style>
 </head>
 <body>
-
+<div id="login-modal">
+    <div class="login-box">
+        <div class="login-title">系统登录</div>
+        <div class="input-group">
+            <label>账号</label>
+            <input type="text" id="username" class="login-input" placeholder="请输入账号">
+        </div>
+        <div class="input-group">
+            <label>密码</label>
+            <input type="password" id="password" class="login-input" placeholder="请输入密码">
+        </div>
+        <button class="login-btn" onclick="checkLogin()">立即登录</button>
+        <div id="loginError" class="login-error">账号或密码错误！</div>
+    </div>
+</div>
 <div class="sidebar">
-    <div class="sidebar-header">毛概题库</div>
+    <div class="sidebar-header">马克思主义理论题库</div>
     <select id="unitSelector" class="unit-select" onchange="switchUnit()">
         <option value="vol1">第一卷 (80题)</option>
         <option value="vol2">第二卷 (80题)</option>
@@ -798,12 +835,90 @@
     function updateStats() {
         // 更新底部状态栏
     }
+    // --- 3. 多用户登录逻辑 ---
+    
+    
+    const USER_LIST = [
+        { user: "李航", pass: "2401100119", name: "李航" },
+        { user: "李宛桐", pass: "2401100209", name: "李宛桐" },
+        { user: "汪美汐", pass: "2405180131", name: "汪美汐" },
+        { user: "孟祥瑞", pass: "2405180231", name: "孟祥瑞" }
+    ];
+
+    // 检查是否已经登录过
+    const loggedUser = sessionStorage.getItem('currentUser');
+    if (loggedUser) {
+        document.getElementById('login-modal').style.display = 'none';
+        showWelcomeMsg(loggedUser); // 显示欢迎语
+    }
+
+    function checkLogin() {
+        const u = document.getElementById('username').value.trim(); // trim() 去除首尾空格
+        const p = document.getElementById('password').value.trim();
+        const errBox = document.getElementById('loginError');
+
+        // 在列表中查找是否有匹配的账号和密码
+        // find() 方法会返回找到的那个用户对象，没找到则返回 undefined
+        const validUser = USER_LIST.find(item => item.user === u && item.pass === p);
+
+        if(validUser) {
+            // --- 登录成功 ---
+            document.getElementById('login-modal').style.display = 'none';
+            
+            // 记录登录状态和用户名
+            sessionStorage.setItem('currentUser', validUser.name);
+            
+            // 提示欢迎
+            showWelcomeMsg(validUser.name);
+            
+        } else {
+            // --- 登录失败 ---
+            errBox.style.display = 'block';
+            errBox.innerText = "账号或密码错误，请重试！";
+            
+            // 错误抖动特效
+            const box = document.querySelector('.login-box');
+            box.style.transform = 'translateX(5px)';
+            setTimeout(() => box.style.transform = 'translateX(0)', 100);
+            setTimeout(() => box.style.transform = 'translateX(-5px)', 200);
+            setTimeout(() => box.style.transform = 'translateX(0)', 300);
+        }
+    }
+    
+    // 简单的欢迎提示功能
+    function showWelcomeMsg(name) {
+        // 在侧边栏顶部插入欢迎语
+        const sidebar = document.querySelector('.sidebar');
+        const welcomeDiv = document.createElement('div');
+        welcomeDiv.style.padding = "10px";
+        welcomeDiv.style.marginBottom = "10px";
+        welcomeDiv.style.background = "#e7f1ff";
+        welcomeDiv.style.color = "#007bff";
+        welcomeDiv.style.borderRadius = "5px";
+        welcomeDiv.style.fontSize = "14px";
+        welcomeDiv.innerHTML = `👋 欢迎你，<strong>${name}</strong> <a href="#" onclick="logout()" style="float:right; color:#666; text-decoration:none;">退出</a>`;
+        
+        // 插入到侧边栏标题下面
+        const header = document.querySelector('.sidebar-header');
+        header.parentNode.insertBefore(welcomeDiv, header.nextSibling);
+    }
+
+    // 退出登录功能
+    function logout() {
+        sessionStorage.removeItem('currentUser');
+        location.reload(); // 刷新页面重新登录
+    }
+    
+    // 允许按回车键登录
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter' && document.getElementById('login-modal').style.display !== 'none') {
+            checkLogin();
+        }
+    });
 
     // 启动
     init();
 </script>
 
 </body>
-
 </html>
-
