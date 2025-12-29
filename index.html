@@ -43,7 +43,43 @@
         /* 解析区域 */
         .analysis { margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 6px; display: none; }
         .analysis.show { display: block; }
-        
+        /* --- DeepSeek AI 样式 --- */
+.ai-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 13px;
+    margin-top: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: transform 0.2s;
+}
+.ai-btn:hover { transform: scale(1.05); opacity: 0.95; }
+.ai-response {
+    margin-top: 15px;
+    padding: 15px;
+    background: #f0f7ff;
+    border-left: 4px solid #764ba2;
+    border-radius: 4px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #333;
+    display: none; /* 默认隐藏 */
+    white-space: pre-wrap; /* 保留换行 */
+}
+.ai-loading {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
         /* 统计栏 */
         .stats { margin-top: auto; padding-top: 15px; border-top: 1px solid #eee; font-size: 14px; color: #666; }
     /* --- 新增：登录界面样式 --- */
@@ -130,6 +166,69 @@
 </div>
 
 <script>
+    // --- 0. DeepSeek 配置 ---
+const DEEPSEEK_API_KEY = "sk-13bfc692c270453c823064d88dfa7860"; // 替换你的 Key
+const API_URL = "https://api.deepseek.com/chat/completions";
+
+async function askDeepSeek(btn) {
+    // 1. 获取当前题目信息
+    const q = currentList[currentIndex];
+    const userPrompt = `
+   你是一位马克思主义原理课程的资深教师。请解析这道题：
+    【题目】${q.q}
+    【选项】${q.opts.join(' ')}
+    【正确答案】${Array.isArray(q.a) ? q.a.join('') : q.a}
+    
+   请按以下格式输出：
+    1. **解析**：简要分析为何选这个答案。
+    2. **知识点**：题目涉及的马原核心概念。
+    3. **易错点**：如果适用，指出为什么其他选项是错的。
+    4.**拓展**: 提供一个类似的题目，并给出答案
+    `;
+
+    // 2. UI 状态更新：显示加载中
+    const responseBox = document.getElementById('aiResponseBox');
+    responseBox.style.display = 'block';
+    responseBox.innerHTML = '正在思考中...';
+    btn.innerHTML = '<span class="ai-loading"></span> 分析中...';
+    btn.disabled = true;
+
+    try {
+        // 3. 发送请求
+        const res = await fetch(API_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${DEEPSEEK_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "deepseek-chat",
+                messages: [
+                    {role: "system", content: "你是一个专业的考研政治/毛概辅导助手。"},
+                    {role: "user", content: userPrompt}
+                ],
+                stream: false
+            })
+        });
+
+        const data = await res.json();
+        
+        // 4. 显示结果
+        if (data.choices && data.choices.length > 0) {
+            const content = data.choices[0].message.content;
+            responseBox.innerHTML = `<strong>🤖 DeepSeek 解析：</strong><br>${content}`;
+        } else {
+            responseBox.innerHTML = "解析失败，请检查 API Key 或网络。";
+        }
+    } catch (error) {
+        console.error(error);
+        responseBox.innerHTML = "请求出错：" + error.message;
+    } finally {
+        // 5. 恢复按钮
+        btn.innerHTML = '🧠 重新生成解析';
+        btn.disabled = false;
+    }
+}
     // --- 1. 数据中心 (在此处粘贴新数据) ---
     const DB = {
         "vol1": [
@@ -763,6 +862,12 @@
         box.innerHTML = `
             <strong>${isCorrect ? '<span style="color:green">回答正确</span>' : '<span style="color:red">回答错误</span>'}</strong><br>
             正确答案：${correctArr.join('')}
+            
+            <div style="margin-top: 10px;">
+                <button class="ai-btn" onclick="askDeepSeek(this)">🧠 DeepSeek 智能解析</button>
+            </div>
+            <div id="aiResponseBox" class="ai-response"></div>
+
             ${extraMsg}
         `;
         box.classList.add('show');
@@ -770,6 +875,7 @@
         const card = document.querySelectorAll('.card-item')[currentIndex];
         card.className = `card-item active ${isCorrect ? 'correct' : 'wrong'}`;
     }
+
 
     function toggleAnalysis() {
         checkAnswer();
