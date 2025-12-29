@@ -817,15 +817,18 @@ async function askDeepSeek(btn) {
         const isMulti = q.type === '多选题';
         
         if(!isMulti) {
+            // 单选/判断题：清除其他选项的选中状态，只选中当前点击的
             document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
             el.classList.add('selected');
         } else {
+            // 多选题：切换选中状态
             el.classList.toggle('selected');
         }
 
-        if(mode === 'practice' && !isMulti) {
-            checkAnswer();
-        }
+        // --- 修改点：注释掉了下面这段代码，禁止点击选项后立即判断 ---
+        // if(mode === 'practice' && !isMulti) {
+        //     checkAnswer();
+        // }
     }
 
     function checkAnswer() {
@@ -889,10 +892,31 @@ async function askDeepSeek(btn) {
         }
     }
 
-    function nextQ() {
+   function nextQ() {
+        // 获取解析框元素
+        const analysisBox = document.getElementById('analysisBox');
+        // 判断当前是否已经显示了答案（检查是否有 show 类名）
+        const isAnswerShown = analysisBox.classList.contains('show');
+
+        // 逻辑：如果答案还没显示，说明用户刚选完但没确认，此时点击“下一题”应该先判分
+        if (!isAnswerShown) {
+            // 检查是否有选中任何选项
+            const hasSelected = document.querySelectorAll('.option.selected').length > 0;
+            if (!hasSelected) {
+                alert("请先选择一个答案！");
+                return;
+            }
+            // 执行判断逻辑
+            checkAnswer();
+            return; // 暂停在这里，让用户看清楚解析
+        }
+
+        // 逻辑：如果答案已经显示了，说明用户已经看过解析，此时点击“下一题”才跳转
         if(currentIndex < currentList.length - 1) {
             currentIndex++;
             renderQuestion();
+        } else {
+            alert("已经是最后一题了！");
         }
     }
 
@@ -1030,5 +1054,6 @@ async function askDeepSeek(btn) {
 
 </body>
 </html>
+
 
 
